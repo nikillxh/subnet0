@@ -77,6 +77,19 @@ cd web && npm install && cp .env.local.example .env.local && npm run dev
 Runs with a deterministic mock LLM out of the box. Set `OPENAI_API_KEY` in
 `agents/.env` (see `agents/.env.example`) to use a real model.
 
+## Scripts
+
+```
+scripts/setup.sh           one-time: forge libs + python venv + npm install
+scripts/local.sh [epochs]  anvil + deploy + run agents + wire dashboard
+scripts/dashboard.sh       start dashboard (http://localhost:3000)
+scripts/e2e.sh             full end-to-end test (contracts->chain->agents->web)
+scripts/testnet-keys.sh    generate 8 testnet keys -> _local/.env, print addresses
+scripts/testnet-deploy.sh  deploy to Monad testnet
+scripts/testnet-run.sh     run agents on Monad testnet
+scripts/clean.sh           stop anvil + dashboard
+```
+
 ## Deploy to Monad testnet
 
 ```bash

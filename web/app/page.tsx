@@ -189,27 +189,27 @@ export default function Page() {
           <h2>Cabal stake share over epochs (Section 10)</h2>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={series}>
-              <CartesianGrid stroke="#232a36" strokeDasharray="3 3" />
-              <XAxis dataKey="epoch" stroke="#8b94a7" fontSize={12} />
+              <CartesianGrid stroke="#2c2212" strokeDasharray="3 3" />
+              <XAxis dataKey="epoch" stroke="#9c8a6e" fontSize={12} />
               <YAxis
                 domain={[0, 0.6]}
-                stroke="#8b94a7"
+                stroke="#9c8a6e"
                 fontSize={12}
                 tickFormatter={(v) => `${(Number(v) * 100).toFixed(0)}%`}
               />
               <Tooltip
                 contentStyle={{
-                  background: "#151922",
-                  border: "1px solid #232a36",
-                  borderRadius: 8,
-                  color: "#e6e9ef",
+                  background: "#14100a",
+                  border: "1px solid #2c2212",
+                  borderRadius: 4,
+                  color: "#f4ead9",
                 }}
                 formatter={(value) => `${(Number(value) * 100).toFixed(2)}%`}
               />
               <Line
                 type="monotone"
                 dataKey="cabalShare"
-                stroke="#f87171"
+                stroke="#ff3b3b"
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
