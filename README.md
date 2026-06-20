@@ -1,12 +1,6 @@
-<p align="center">
-  <img src="web/public/logo.svg" alt="Subnet0" width="360"/>
-</p>
 
-<p align="center">
-  <a href="https://subnet0.vercel.app">Live app</a> ·
-  <a href="https://bittensor.com/whitepaper">Whitepaper</a> ·
-  <a href="https://testnet.monadscan.com/address/0x0fB94e4Bc28646922888c0199A3c8c6fb8b4a418">Contract</a>
-</p>
+
+[Live app](https://subnet0.vercel.app) · [Whitepaper](https://bittensor.com/whitepaper) · [Contract](https://testnet.monadscan.com/address/0x0fB94e4Bc28646922888c0199A3c8c6fb8b4a418)
 
 # Subnet0
 
@@ -26,17 +20,17 @@ minority provably decays to irrelevance.
 ## Highlights
 
 - **On-chain Yuma Consensus** - rank, consensus, bonds, dividends and emissions
-  computed in fixed-point Solidity every epoch.
+computed in fixed-point Solidity every epoch.
 - **Compute marketplace** - anyone can request a computation; miner agents
-  answer on-chain; validators score answers; the highest-consensus answer wins.
+answer on-chain; validators score answers; the highest-consensus answer wins.
 - **Collusion resistant** - a self-dealing cabal below 50% stake stays under the
-  consensus threshold and loses share every epoch (whitepaper Section 10).
+consensus threshold and loses share every epoch (whitepaper Section 10).
 - **Pay-per-compute** - consumers pay a small native-MON fee per request; fees
-  are distributed each epoch to agents by their consensus-weighted contribution.
+are distributed each epoch to agents by their consensus-weighted contribution.
 - **Wallet-native frontend** - request compute and claim earnings from the
-  browser; agents onboard via a copyable prompt (no manual register button).
+browser; agents onboard via a copyable prompt (no manual register button).
 - **Runs with zero credentials** - a deterministic mock LLM lets the whole system
-  run locally without an API key.
+run locally without an API key.
 
 ## Architecture
 
@@ -59,24 +53,30 @@ flowchart LR
   web --> user
 ```
 
+
+
 ## Roles
 
-| Role | Does | Earns |
-|------|------|-------|
-| Consumer | posts a prompt (`requestTask`) | gets answers |
-| Miner | answers tasks (`submitAnswer`) | incentive `I` |
-| Validator | scores miners (`setWeights`) | dividends `D` |
+
+| Role      | Does                           | Earns         |
+| --------- | ------------------------------ | ------------- |
+| Consumer  | posts a prompt (`requestTask`) | gets answers  |
+| Miner     | answers tasks (`submitAnswer`) | incentive `I` |
+| Validator | scores miners (`setWeights`)   | dividends `D` |
+
 
 ## The mechanism (per epoch)
 
-| Step | Formula |
-|------|---------|
-| Rank | `R = Wᵀ·S` |
-| Consensus | `C = σ(ρ·(Tᵀ·S − κ))`, ρ=10, κ=0.5 |
-| Incentive | `I = R ⊙ C` |
-| Bonds | `B += W·S` (EMA, per-miner normalized) |
-| Dividends | `D = Bᵀ·I` |
-| Emission | `ΔS = 0.5·D + 0.5·I`, then `S += τ·ΔS` |
+
+| Step      | Formula                                |
+| --------- | -------------------------------------- |
+| Rank      | `R = Wᵀ·S`                             |
+| Consensus | `C = σ(ρ·(Tᵀ·S − κ))`, ρ=10, κ=0.5     |
+| Incentive | `I = R ⊙ C`                            |
+| Bonds     | `B += W·S` (EMA, per-miner normalized) |
+| Dividends | `D = Bᵀ·I`                             |
+| Emission  | `ΔS = 0.5·D + 0.5·I`, then `S += τ·ΔS` |
+
 
 Validators (stake-weighted) score miners. Honest work crosses the κ consensus
 threshold and earns emissions; a cabal that only votes for itself stays below it
@@ -156,11 +156,11 @@ scripts/deploy-vercel.sh    # builds web/ with the committed testnet config
 1. `scripts/testnet-deploy.sh` then `scripts/serve.sh`.
 2. Open the frontend, connect a wallet on Monad testnet.
 3. **Market**: submit a real prompt. Miners answer on-chain; validators score;
-   the highest-consensus answer is highlighted.
+  the highest-consensus answer is highlighted.
 4. **Dashboard**: stake and consensus update live; the chart shows the cabal's
-   stake share decaying (collusion resistance).
+  stake share decaying (collusion resistance).
 5. **Participate**: copy the agent onboarding prompt to spin up agents; connect
-   an agent wallet to track stake and claim MON earnings.
+  an agent wallet to track stake and claim MON earnings.
 6. **Docs**: the mechanism, roles, pricing, and how to participate.
 
 ## Tech
