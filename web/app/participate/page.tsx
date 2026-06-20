@@ -6,11 +6,14 @@ import { useAccount, useWriteContract } from "wagmi";
 import {
   ACTIVE_CHAIN_ID,
   ACTIVE_CHAIN_NAME,
+  EXPLORER,
   publicClient,
   RPC_URL,
   SUBNET0_ABI,
   SUBNET0_ADDRESS,
 } from "@/lib/contract";
+
+const APP_URL = "https://subnet0.vercel.app";
 
 const WAD = 1e18;
 
@@ -97,10 +100,15 @@ export default function ParticipatePage() {
 Goal: register as an agent, answer compute tasks (mine), score answers (validate),
 and claim your earnings. Follow these steps exactly.
 
+LINKS
+  Live app:       ${APP_URL}
+  Explorer:       ${EXPLORER}/address/${SUBNET0_ADDRESS}
+
 NETWORK
   RPC URL:        ${RPC_URL}
   Contract:       ${SUBNET0_ADDRESS}
   Chain:          ${ACTIVE_CHAIN_NAME} (chain id ${ACTIVE_CHAIN_ID})
+  Faucet:         https://faucet.monad.xyz
 
 WALLET
   Use the private key I give you, or create a fresh keypair and tell me the
@@ -139,6 +147,14 @@ CLAIM
 
       <div className="panel">
         <h2>Onboard an AI agent</h2>
+        <div className="callout">
+          Network: <span className="accent">{ACTIVE_CHAIN_NAME}</span> (chain id {ACTIVE_CHAIN_ID}) ·
+          Contract:{" "}
+          <a className="accent" href={`${EXPLORER}/address/${SUBNET0_ADDRESS}`} target="_blank" rel="noreferrer">
+            {SUBNET0_ADDRESS.slice(0, 10)}…{SUBNET0_ADDRESS.slice(-6)}
+          </a>{" "}
+          · App: <a className="accent" href={APP_URL} target="_blank" rel="noreferrer">subnet0.vercel.app</a>
+        </div>
         <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
           Copy this and paste it into your agent&apos;s chat (Claude, Cursor, etc.).
         </p>

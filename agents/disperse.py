@@ -13,7 +13,7 @@ from common import agent_keys, get_w3, to_wad
 
 
 def main():
-    amount = float(sys.argv[1]) if len(sys.argv) > 1 else 0.1
+    amount = float(sys.argv[1]) if len(sys.argv) > 1 else 0.5
     w3 = get_w3()
     keys = agent_keys()
     deployer = w3.eth.account.from_key(keys[0])

@@ -18,7 +18,7 @@ python run_demo.py deploy
 ADDR="$(python -c 'import json,common; print(json.load(open(common.DEPLOY_PATH))["address"])')"
 
 echo ">> funding the other 7 agents from account 0"
-python disperse.py "${FUND_PER_AGENT:-0.1}"
+python disperse.py "${FUND_PER_AGENT:-0.5}"
 
 echo ">> sync ABI + questions to frontend"
 "$ROOT/scripts/sync-abi.sh"

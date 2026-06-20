@@ -113,6 +113,9 @@ class Account:
             "from": self.address,
             "nonce": w3.eth.get_transaction_count(self.address),
             "chainId": w3.eth.chain_id,
+            # force legacy (type-0) txs: Monad testnet rejects web3's default
+            # EIP-1559 (type-2) txs with a bogus "insufficient balance" error.
+            "gasPrice": w3.eth.gas_price,
         }
         if value:
             params["value"] = value

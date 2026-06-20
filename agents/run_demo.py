@@ -43,6 +43,7 @@ def cmd_deploy():
             "from": deployer.address,
             "nonce": w3.eth.get_transaction_count(deployer.address),
             "chainId": w3.eth.chain_id,
+            "gasPrice": w3.eth.gas_price,  # legacy tx (Monad rejects type-2)
         }
     )
     tx["gas"] = int(w3.eth.estimate_gas(tx) * 12 // 10)

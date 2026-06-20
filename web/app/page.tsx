@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { publicClient, SUBNET0_ABI, SUBNET0_ADDRESS } from "@/lib/contract";
+import { ACTIVE_CHAIN_ID, publicClient, SUBNET0_ABI, SUBNET0_ADDRESS } from "@/lib/contract";
 
 const WAD = 1e18;
 
@@ -48,8 +48,20 @@ export default function Page() {
   const [series, setSeries] = useState<{ epoch: number; cabalShare: number }[]>(
     []
   );
+  const seenEpochs = useRef<Set<number>>(new Set());
 
-  // table + current epoch from the live snapshot
+  const addPoint = (ep: number, share: number) => {
+    if (seenEpochs.current.has(ep)) return;
+    seenEpochs.current.add(ep);
+    setSeries((prev) =>
+      [...prev, { epoch: ep, cabalShare: Number(share.toFixed(4)) }]
+        .sort((a, b) => a.epoch - b.epoch)
+        .slice(-300)
+    );
+  };
+
+  // table + current epoch from the live snapshot; also appends the live point
+  // (works on every chain — no getLogs needed)
   useEffect(() => {
     let alive = true;
     const poll = async () => {
@@ -72,22 +84,23 @@ export default function Page() {
         const [count, ep, agents, s, c, inc, div] = r;
         const n = Number(count);
         const next: Row[] = [];
+        let total = 0;
+        let cabal = 0;
         for (let i = 0; i < n; i++) {
           const role = ROLE[i] ?? { label: `uid${i}`, kind: "honest" as const };
+          const stake = f(s[i]);
+          total += stake;
+          if (CABAL_UIDS.includes(i)) cabal += stake;
           next.push({
-            uid: i,
-            label: role.label,
-            kind: role.kind,
-            addr: agents[i],
-            stake: f(s[i]),
-            c: f(c[i]),
-            inc: f(inc[i]),
-            div: f(div[i]),
+            uid: i, label: role.label, kind: role.kind, addr: agents[i],
+            stake, c: f(c[i]), inc: f(inc[i]), div: f(div[i]),
           });
         }
         setRows(next);
-        setEpoch(Number(ep));
+        const epNum = Number(ep);
+        setEpoch(epNum);
         setConnected(true);
+        if (epNum > 0 && total > 0) addPoint(epNum, cabal / total);
       } catch {
         if (alive) setConnected(false);
       }
@@ -100,10 +113,13 @@ export default function Page() {
     };
   }, []);
 
-  // full decay curve, rebuilt from EpochSettled events (every epoch ever run)
+  // history backfill from EpochSettled events. Only on local Anvil (31337):
+  // public testnet RPCs cap getLogs to ~100 blocks, so there we rely on the
+  // live points above instead.
   useEffect(() => {
+    if (ACTIVE_CHAIN_ID !== 31337) return;
     let alive = true;
-    const loadSeries = async () => {
+    (async () => {
       try {
         const logs = await publicClient.getContractEvents({
           address: SUBNET0_ADDRESS,
@@ -112,7 +128,6 @@ export default function Page() {
           fromBlock: 0n,
         });
         if (!alive) return;
-        const byEpoch = new Map<number, number>();
         for (const log of logs) {
           const a = log.args as { epoch?: bigint; m?: number; stake?: readonly bigint[] };
           if (a.epoch === undefined || !a.stake) continue;
@@ -124,21 +139,14 @@ export default function Page() {
             total += v;
             if (CABAL_UIDS.includes(i)) cabal += v;
           }
-          byEpoch.set(Number(a.epoch), total > 0 ? Number((cabal / total).toFixed(4)) : 0);
+          if (total > 0) addPoint(Number(a.epoch), cabal / total);
         }
-        const next = [...byEpoch.entries()]
-          .sort((x, y) => x[0] - y[0])
-          .map(([ep, cabalShare]) => ({ epoch: ep, cabalShare }));
-        setSeries(next);
       } catch {
-        /* ignore; snapshot poll handles connection state */
+        /* best effort */
       }
-    };
-    loadSeries();
-    const t = setInterval(loadSeries, 2500);
+    })();
     return () => {
       alive = false;
-      clearInterval(t);
     };
   }, []);
 
