@@ -18,7 +18,9 @@ echo ">> forge build"
 cd "$ROOT/agents"
 . .venv/bin/activate
 export RPC_URL="$RPC"
-unset AGENT_KEYS SUBNET0_ADDRESS  # force local anvil dev keys
+# force local anvil dev keys: empty (not unset) so _local/.env can't refill it
+export AGENT_KEYS=""
+unset SUBNET0_ADDRESS
 
 echo ">> deploy"
 python run_demo.py deploy

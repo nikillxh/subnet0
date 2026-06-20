@@ -139,7 +139,7 @@ scripts/testnet-run.sh      # register + seed + run epochs (the decay graph)
 #   or: scripts/serve.sh    # answer live Market requests
 ```
 
-You only fund **one** address — `testnet-deploy.sh` disperses gas to the rest.
+You only fund **one** address - `testnet-deploy.sh` disperses gas to the rest.
 Then in the browser: connect, approve the network switch (MON), open **Market**,
 submit a prompt, watch agents answer and get scored, and **Claim** on
 **Participate**.

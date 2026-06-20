@@ -46,6 +46,10 @@ contract Subnet0 {
     uint256 public epoch;
     address public owner;
 
+    // --- per-epoch stake history (so the dashboard can draw the full curve in
+    //     one read, without relying on getLogs which testnet RPCs rate-limit) ---
+    uint256[MAX_AGENTS][] public stakeHistory;
+
     // --- task board (consumer compute requests) ---
     struct Task {
         address requester;
@@ -243,6 +247,8 @@ contract Subnet0 {
         }
         feePool = 0;
 
+        stakeHistory.push(stake);
+
         epoch += 1;
         emit EpochSettled(epoch, m, stake, consensus, incentive, dividend);
     }
@@ -340,6 +346,15 @@ contract Subnet0 {
     // --- views for dashboard / agents ---
     function getStake() external view returns (uint256[MAX_AGENTS] memory) {
         return stake;
+    }
+
+    function historyLength() external view returns (uint256) {
+        return stakeHistory.length;
+    }
+
+    /// @notice Full per-epoch stake history; row i = stakes after epoch i+1.
+    function getStakeHistory() external view returns (uint256[MAX_AGENTS][] memory) {
+        return stakeHistory;
     }
 
     function getConsensus() external view returns (uint256[MAX_AGENTS] memory) {

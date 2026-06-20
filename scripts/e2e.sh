@@ -18,7 +18,7 @@ echo "== 2. anvil + deploy + sync abi =="
 anvil --silent >/tmp/anvil.log 2>&1 & sleep 3
 ( cd "$ROOT/contracts" && forge build >/dev/null )
 cd "$ROOT/agents"; . .venv/bin/activate
-export RPC_URL="$RPC"; unset AGENT_KEYS SUBNET0_ADDRESS
+export RPC_URL="$RPC"; export AGENT_KEYS=""; unset SUBNET0_ADDRESS
 python run_demo.py deploy >/tmp/deploy.log 2>&1 && ok "deploy" || { bad "deploy"; cat /tmp/deploy.log; }
 ADDR="$(python -c 'import json,common; print(json.load(open(common.DEPLOY_PATH))["address"])')"
 "$ROOT/scripts/sync-abi.sh" >/dev/null && ok "sync-abi" || bad "sync-abi"

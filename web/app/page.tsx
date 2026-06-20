@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ACTIVE_CHAIN_ID, publicClient, SUBNET0_ABI, SUBNET0_ADDRESS } from "@/lib/contract";
+import { publicClient, SUBNET0_ABI, SUBNET0_ADDRESS } from "@/lib/contract";
 
 const WAD = 1e18;
 
@@ -48,20 +48,7 @@ export default function Page() {
   const [series, setSeries] = useState<{ epoch: number; cabalShare: number }[]>(
     []
   );
-  const seenEpochs = useRef<Set<number>>(new Set());
-
-  const addPoint = (ep: number, share: number) => {
-    if (seenEpochs.current.has(ep)) return;
-    seenEpochs.current.add(ep);
-    setSeries((prev) =>
-      [...prev, { epoch: ep, cabalShare: Number(share.toFixed(4)) }]
-        .sort((a, b) => a.epoch - b.epoch)
-        .slice(-300)
-    );
-  };
-
-  // table + current epoch from the live snapshot; also appends the live point
-  // (works on every chain — no getLogs needed)
+  // table + current epoch from the live snapshot
   useEffect(() => {
     let alive = true;
     const poll = async () => {
@@ -84,23 +71,16 @@ export default function Page() {
         const [count, ep, agents, s, c, inc, div] = r;
         const n = Number(count);
         const next: Row[] = [];
-        let total = 0;
-        let cabal = 0;
         for (let i = 0; i < n; i++) {
           const role = ROLE[i] ?? { label: `uid${i}`, kind: "honest" as const };
-          const stake = f(s[i]);
-          total += stake;
-          if (CABAL_UIDS.includes(i)) cabal += stake;
           next.push({
             uid: i, label: role.label, kind: role.kind, addr: agents[i],
-            stake, c: f(c[i]), inc: f(inc[i]), div: f(div[i]),
+            stake: f(s[i]), c: f(c[i]), inc: f(inc[i]), div: f(div[i]),
           });
         }
         setRows(next);
-        const epNum = Number(ep);
-        setEpoch(epNum);
+        setEpoch(Number(ep));
         setConnected(true);
-        if (epNum > 0 && total > 0) addPoint(epNum, cabal / total);
       } catch {
         if (alive) setConnected(false);
       }
@@ -113,40 +93,38 @@ export default function Page() {
     };
   }, []);
 
-  // history backfill from EpochSettled events. Only on local Anvil (31337):
-  // public testnet RPCs cap getLogs to ~100 blocks, so there we rely on the
-  // live points above instead.
+  // full decay curve in one read: on-chain stakeHistory (works on every chain,
+  // no getLogs which testnet RPCs rate-limit to ~100 blocks)
   useEffect(() => {
-    if (ACTIVE_CHAIN_ID !== 31337) return;
     let alive = true;
-    (async () => {
+    const loadSeries = async () => {
       try {
-        const logs = await publicClient.getContractEvents({
+        const hist = (await publicClient.readContract({
           address: SUBNET0_ADDRESS,
           abi: SUBNET0_ABI,
-          eventName: "EpochSettled",
-          fromBlock: 0n,
-        });
+          functionName: "getStakeHistory",
+        })) as readonly (readonly bigint[])[];
         if (!alive) return;
-        for (const log of logs) {
-          const a = log.args as { epoch?: bigint; m?: number; stake?: readonly bigint[] };
-          if (a.epoch === undefined || !a.stake) continue;
-          const m = Number(a.m ?? a.stake.length);
+        const next = hist.map((row, idx) => {
           let total = 0;
           let cabal = 0;
-          for (let i = 0; i < m; i++) {
-            const v = Number(a.stake[i]) / WAD;
+          for (let i = 0; i < row.length; i++) {
+            const v = Number(row[i]) / WAD;
             total += v;
             if (CABAL_UIDS.includes(i)) cabal += v;
           }
-          if (total > 0) addPoint(Number(a.epoch), cabal / total);
-        }
+          return { epoch: idx + 1, cabalShare: total > 0 ? Number((cabal / total).toFixed(4)) : 0 };
+        });
+        setSeries(next);
       } catch {
-        /* best effort */
+        /* ignore; snapshot poll handles connection state */
       }
-    })();
+    };
+    loadSeries();
+    const t = setInterval(loadSeries, 2500);
     return () => {
       alive = false;
+      clearInterval(t);
     };
   }, []);
 
@@ -154,10 +132,10 @@ export default function Page() {
 
   return (
     <main>
-      <h1>Subnet0 — Peer-to-Peer Intelligence Market on Monad</h1>
+      <h1>Subnet0 - Peer-to-Peer Intelligence Market on Monad</h1>
       <p className="sub">
         Yuma Consensus incentive mechanism. Agents register, score each other,
-        and earn emissions — collusion-resistant up to 50% of stake.
+        and earn emissions - collusion-resistant up to 50% of stake.
       </p>
 
       <div className="stat">
@@ -223,7 +201,7 @@ export default function Page() {
         </div>
 
         <div className="panel">
-          <h2>Collusion resistance — colluding group&apos;s stake share per epoch</h2>
+          <h2>Collusion resistance: colluding group&apos;s stake share per epoch</h2>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={series}>
               <CartesianGrid stroke="#2c2212" strokeDasharray="3 3" />

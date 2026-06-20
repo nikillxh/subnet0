@@ -7,5 +7,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT/agents"
 . .venv/bin/activate
 export RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
+# on a local chain, force the anvil dev keys (empty so _local/.env can't refill
+# AGENT_KEYS with testnet keys that aren't funded on anvil)
+case "$RPC_URL" in
+  *127.0.0.1*|*localhost*) export AGENT_KEYS="" ;;
+esac
 echo ">> serving against $RPC_URL (Ctrl+C to stop)"
 python -u serve.py "$@"

@@ -35,7 +35,7 @@ def main():
     print(f"\n    {accts[0].address}\n")
     print("=" * 64)
     print("It is the deployer/owner. testnet-deploy.sh then funds the other 7")
-    print("agents from it automatically — you do NOT fund them yourself.")
+    print("agents from it automatically - you do NOT fund them yourself.")
 
 
 if __name__ == "__main__":

@@ -244,6 +244,19 @@ export const SUBNET0_ABI = [
   },
   {
     "type": "function",
+    "name": "getStakeHistory",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256[16][]",
+        "internalType": "uint256[16][]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getTask",
     "inputs": [
       {
@@ -291,6 +304,19 @@ export const SUBNET0_ABI = [
         "name": "row",
         "type": "uint256[16]",
         "internalType": "uint256[16]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "historyLength",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -623,6 +649,30 @@ export const SUBNET0_ABI = [
     "type": "function",
     "name": "stake",
     "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "stakeHistory",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
       {
         "name": "",
         "type": "uint256",
