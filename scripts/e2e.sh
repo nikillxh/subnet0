@@ -22,6 +22,7 @@ export RPC_URL="$RPC"; unset AGENT_KEYS SUBNET0_ADDRESS
 python run_demo.py deploy >/tmp/deploy.log 2>&1 && ok "deploy" || { bad "deploy"; cat /tmp/deploy.log; }
 ADDR="$(python -c 'import json,common; print(json.load(open(common.DEPLOY_PATH))["address"])')"
 "$ROOT/scripts/sync-abi.sh" >/dev/null && ok "sync-abi" || bad "sync-abi"
+"$ROOT/scripts/sync-qa.sh" >/dev/null && ok "sync-qa" || bad "sync-qa"
 
 echo "== 3. scripted decay (collusion resistance) =="
 python run_demo.py run --epochs 12 >/tmp/run.log 2>&1 && ok "agents run" || { bad "agents run"; tail -20 /tmp/run.log; }
@@ -32,19 +33,23 @@ assert len(v)>=5 and v[-1] < v[0]-0.05, v
 print(f"   share {v[0]:.4f} -> {v[-1]:.4f}")
 PY
 
-echo "== 4. on-chain task board flow =="
-python - <<'PY' && ok "task answered on-chain" || bad "task flow failed"
+echo "== 4. on-chain task board flow (paid) =="
+python - <<'PY' && ok "paid task answered on-chain" || bad "task flow failed"
 from common import Account, agent_keys, get_w3
 w3=get_w3(); keys=agent_keys()
 consumer=Account(w3, keys[2])
+fee=consumer.contract.functions.taskFee().call()
+assert fee>0, "taskFee should be set"
 tid=consumer.contract.functions.taskCount().call()
-consumer.send(consumer.contract.functions.requestTask("e2e: what is 2+2?"))
+consumer.send(consumer.contract.functions.requestTask("What is the capital of Japan?"), value=fee)
 for i in range(2,8):  # miners uid2..7 (registered by step 3)
     a=Account(w3, keys[i])
     a.send(a.contract.functions.submitAnswer(tid, f"answer from uid{i}"))
 uids,texts=consumer.contract.functions.getAnswers(tid).call()
 assert len(uids)==6, (uids,texts)
-print(f"   task #{tid}: {len(uids)} on-chain answers")
+pool=consumer.contract.functions.feePool().call()
+assert pool>=fee, ("feePool not collected", pool, fee)
+print(f"   task #{tid}: {len(uids)} answers, feePool={pool}")
 PY
 
 echo "== 5. consensus ordering =="
@@ -59,6 +64,7 @@ echo "== 6. web build + all pages 200 =="
 cat > "$ROOT/web/.env.local" <<EOF
 NEXT_PUBLIC_RPC_URL=$RPC
 NEXT_PUBLIC_SUBNET0_ADDRESS=$ADDR
+NEXT_PUBLIC_CHAIN_ID=31337
 EOF
 ( cd "$ROOT/web" && npm run build >/tmp/webbuild.log 2>&1 ) && ok "web build" || { bad "web build"; tail -20 /tmp/webbuild.log; }
 ( cd "$ROOT/web" && npm run dev >/tmp/web.log 2>&1 & ); sleep 10

@@ -24,18 +24,20 @@ echo ">> deploy"
 python run_demo.py deploy
 ADDR="$(python -c 'import json,common; print(json.load(open(common.DEPLOY_PATH))["address"])')"
 
-echo ">> sync ABI to frontend"
+echo ">> sync ABI + questions to frontend"
 "$ROOT/scripts/sync-abi.sh"
+"$ROOT/scripts/sync-qa.sh"
 
 # wire dashboard to this deploy
 cat > "$ROOT/web/.env.local" <<EOF
 NEXT_PUBLIC_RPC_URL=$RPC
 NEXT_PUBLIC_SUBNET0_ADDRESS=$ADDR
+NEXT_PUBLIC_CHAIN_ID=31337
 EOF
 echo ">> dashboard wired to $ADDR"
 
 echo ">> running $EPOCHS epochs"
-python run_demo.py run --epochs "$EPOCHS"
+python run_demo.py run --epochs "$EPOCHS" ${RUN_ARGS:-}
 
 echo
 echo ">> done. start dashboard:  scripts/dashboard.sh"

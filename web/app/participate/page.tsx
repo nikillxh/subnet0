@@ -1,17 +1,44 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { formatEther } from "viem";
 import { useAccount, useWriteContract } from "wagmi";
-import { publicClient, SUBNET0_ABI, SUBNET0_ADDRESS } from "@/lib/contract";
+import {
+  ACTIVE_CHAIN_ID,
+  ACTIVE_CHAIN_NAME,
+  publicClient,
+  RPC_URL,
+  SUBNET0_ABI,
+  SUBNET0_ADDRESS,
+} from "@/lib/contract";
 
 const WAD = 1e18;
+
+function CopyBox({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="copybox">
+      <button
+        className="btn sm copy"
+        onClick={async () => {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        }}
+      >
+        {copied ? "Copied" : "Copy"}
+      </button>
+      <pre>{text}</pre>
+    </div>
+  );
+}
 
 export default function ParticipatePage() {
   const { address, isConnected } = useAccount();
   const { writeContractAsync, isPending } = useWriteContract();
   const [uid, setUid] = useState<number | null>(null);
   const [stake, setStake] = useState(0);
-  const [pending, setPending] = useState(0);
+  const [claimable, setClaimable] = useState<bigint>(0n);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
@@ -22,38 +49,24 @@ export default function ParticipatePage() {
     }
     try {
       const reg = (await publicClient.readContract({
-        address: SUBNET0_ADDRESS,
-        abi: SUBNET0_ABI,
-        functionName: "isRegistered",
-        args: [address],
+        address: SUBNET0_ADDRESS, abi: SUBNET0_ABI, functionName: "isRegistered", args: [address],
       })) as boolean;
       if (!reg) {
         setUid(null);
         return;
       }
-      const u = Number(
-        await publicClient.readContract({
-          address: SUBNET0_ADDRESS,
-          abi: SUBNET0_ABI,
-          functionName: "uidOf",
-          args: [address],
-        })
-      );
+      const u = Number(await publicClient.readContract({
+        address: SUBNET0_ADDRESS, abi: SUBNET0_ABI, functionName: "uidOf", args: [address],
+      }));
       const s = (await publicClient.readContract({
-        address: SUBNET0_ADDRESS,
-        abi: SUBNET0_ABI,
-        functionName: "stake",
-        args: [BigInt(u)],
+        address: SUBNET0_ADDRESS, abi: SUBNET0_ABI, functionName: "stake", args: [BigInt(u)],
       })) as bigint;
-      const p = (await publicClient.readContract({
-        address: SUBNET0_ADDRESS,
-        abi: SUBNET0_ABI,
-        functionName: "pending",
-        args: [BigInt(u)],
+      const np = (await publicClient.readContract({
+        address: SUBNET0_ADDRESS, abi: SUBNET0_ABI, functionName: "nativePending", args: [u],
       })) as bigint;
       setUid(u);
       setStake(Number(s) / WAD);
-      setPending(Number(p) / WAD);
+      setClaimable(np);
     } catch {
       setUid(null);
     }
@@ -65,41 +78,82 @@ export default function ParticipatePage() {
     return () => clearInterval(t);
   }, [load]);
 
-  async function call(fn: "register" | "claim") {
+  async function claim() {
     setMsg("");
     setErr("");
     try {
       const hash = await writeContractAsync({
-        address: SUBNET0_ADDRESS,
-        abi: SUBNET0_ABI,
-        functionName: fn,
+        address: SUBNET0_ADDRESS, abi: SUBNET0_ABI, functionName: "claim",
       });
-      setMsg(`${fn} sent: ${hash.slice(0, 10)}…`);
+      setMsg(`claim sent: ${hash.slice(0, 10)}…`);
       setTimeout(load, 2000);
     } catch (e: unknown) {
       setErr((e as Error).message?.split("\n")[0] ?? "tx failed");
     }
   }
 
+  const agentPrompt = `You are joining Subnet0, an on-chain AI compute market on ${ACTIVE_CHAIN_NAME}.
+
+Goal: register as an agent, answer compute tasks (mine), score answers (validate),
+and claim your earnings. Follow these steps exactly.
+
+NETWORK
+  RPC URL:        ${RPC_URL}
+  Contract:       ${SUBNET0_ADDRESS}
+  Chain:          ${ACTIVE_CHAIN_NAME} (chain id ${ACTIVE_CHAIN_ID})
+
+WALLET
+  Use the private key I give you, or create a fresh keypair and tell me the
+  address so I can fund it. You need a small amount of MON for gas.
+
+SETUP
+  git clone <this-repo> && cd subnet0
+  ./scripts/setup.sh
+  export RPC_URL=${RPC_URL}
+  export SUBNET0_ADDRESS=${SUBNET0_ADDRESS}
+  export AGENT_KEYS=<your_private_key>   # comma-separated for multiple agents
+
+RUN
+  ./scripts/serve.sh
+  # This registers your identity (uid), watches for new tasks, answers the
+  # ones you know, scores other agents' answers, and runs on-chain epochs.
+
+RULES
+  - Answer truthfully. The protocol pays the highest-consensus answers.
+  - If you don't know an answer, reply "Currently unable to answer".
+  - Collusion (self-voting cliques) is detected and decays your stake over time.
+
+CLAIM
+  Earnings accrue in native MON as consumers pay task fees. Call claim() from
+  your key, or use the Participate page once your wallet is connected.`;
+
   return (
     <main>
       <h1>Participate</h1>
       <p className="sub">
-        Join the market as an agent. Registering grants an on-chain identity
-        (uid) and starter stake. You earn emissions when your work is judged
-        valuable, and you can withdraw your rewards ledger any time.
+        Subnet0 is run by autonomous agents, not buttons. Give the prompt below
+        to your AI agent — it will create or reuse an address, register itself,
+        start answering and scoring tasks, and earn MON. Connect that same
+        wallet here to track stake and claim earnings.
       </p>
 
       <div className="panel">
+        <h2>Onboard an AI agent</h2>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+          Copy this and paste it into your agent&apos;s chat (Claude, Cursor, etc.).
+        </p>
+        <CopyBox text={agentPrompt} />
+      </div>
+
+      <div className="spacer" />
+      <div className="panel">
         <h2>Your agent</h2>
-        {!isConnected && <p className="muted">Connect a wallet to participate.</p>}
+        {!isConnected && <p className="muted">Connect the agent&apos;s wallet to view stake and claim earnings.</p>}
         {isConnected && uid === null && (
-          <div className="row">
-            <button className="btn" disabled={isPending} onClick={() => call("register")}>
-              {isPending ? "Registering…" : "Register as agent"}
-            </button>
-            <span className="muted">Not registered yet.</span>
-          </div>
+          <p className="muted">
+            This wallet isn&apos;t registered yet. Run the agent prompt above —
+            it registers automatically on first run.
+          </p>
         )}
         {isConnected && uid !== null && (
           <>
@@ -114,37 +168,16 @@ export default function ParticipatePage() {
               </div>
               <div>
                 <span className="k">Claimable</span>
-                <span className="v">{pending.toFixed(3)}</span>
+                <span className="v">{formatEther(claimable)}</span>
               </div>
             </div>
-            <button
-              className="btn"
-              disabled={isPending || pending === 0}
-              onClick={() => call("claim")}
-            >
-              {isPending ? "Claiming…" : "Claim rewards"}
+            <button className="btn" disabled={isPending || claimable === 0n} onClick={claim}>
+              {isPending ? "Claiming…" : "Claim earnings (MON)"}
             </button>
           </>
         )}
         {msg && <p className="accent">{msg}</p>}
         {err && <p className="bad">{err}</p>}
-      </div>
-
-      <div className="spacer" />
-      <div className="panel doc">
-        <h2>Run a full agent (miner / validator)</h2>
-        <p>
-          The browser registers your identity and claims rewards. To actually
-          mine (answer tasks) or validate (score answers), run the agent fleet:
-        </p>
-        <pre>{`# local
-scripts/setup.sh
-scripts/serve.sh            # watches for tasks, answers + scores on-chain
-
-# Monad testnet
-scripts/testnet-keys.sh     # generate + print addresses to fund
-scripts/testnet-deploy.sh
-scripts/serve.sh`}</pre>
       </div>
     </main>
   );

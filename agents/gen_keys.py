@@ -30,11 +30,12 @@ def main():
     env_path.write_text(text)
 
     print(f"Wrote {N} keys to {env_path} (AGENT_KEYS)\n")
-    print("Fund these addresses at https://faucet.monad.xyz :")
-    for i, a in enumerate(accts):
-        role = "deployer/owner (fund FIRST, needs most gas)" if i == 0 else "agent"
-        print(f"  [{i}] {a.address}   <- {role}")
-    print("\nAll 8 send transactions (register/setWeights), so fund all 8.")
+    print("=" * 64)
+    print("FUND ONLY THIS ONE ADDRESS at https://faucet.monad.xyz :")
+    print(f"\n    {accts[0].address}\n")
+    print("=" * 64)
+    print("It is the deployer/owner. testnet-deploy.sh then funds the other 7")
+    print("agents from it automatically — you do NOT fund them yourself.")
 
 
 if __name__ == "__main__":

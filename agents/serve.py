@@ -68,15 +68,21 @@ def ensure_setup(fleet, seed: bool):
 def serve_task(fleet, task_id: int):
     owner = fleet["owner"]
     contract = owner.contract
-    requester, prompt, _, _ = contract.functions.getTask(task_id).call()
+    requester, prompt, _, answer_count = contract.functions.getTask(task_id).call()
+    if answer_count > 0:
+        return False  # already handled (e.g. by a previous serve session)
     print(f"\n=== Task #{task_id} from {requester[:10]}… ===\n  prompt: {prompt}")
 
+    submitted = 0
     for m in fleet["all_miners"]:
         text = m.answer(prompt)
         try:
             m.acct.send(contract.functions.submitAnswer(task_id, text[:1000]))
+            submitted += 1
         except Exception as e:  # already answered / revert
             print(f"  ! {m.name} submit skipped: {e}")
+    if submitted == 0:
+        return False
 
     for v in fleet["honest_vals"]:
         v.vote(prompt, fleet["all_miners"])
@@ -91,6 +97,7 @@ def serve_task(fleet, task_id: int):
     for i, uid in enumerate(uids):
         flag = "  <-- best (highest consensus)" if i == best else ""
         print(f"    uid{uid} C={from_wad(c[uid]):.3f} I={from_wad(inc[uid]):.3f}: {texts[i][:60]}{flag}")
+    return True
 
 
 def main():
@@ -104,8 +111,11 @@ def main():
     ensure_setup(fleet, seed=not args.no_seed)
     contract = fleet["owner"].contract
 
-    processed = contract.functions.taskCount().call()
-    print(f"\nServing. {processed} existing task(s) skipped. Watching for new requests…")
+    # start at 0 so we answer any task already posted (incl. ones submitted
+    # before serve started). serve_task() no-ops on already-answered tasks.
+    processed = 0
+    existing = contract.functions.taskCount().call()
+    print(f"\nServing. {existing} existing task(s) will be checked for pending answers.")
     print("Submit one from the frontend Market page (or requestTask on-chain). Ctrl+C to stop.")
     while True:
         try:

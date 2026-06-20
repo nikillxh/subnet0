@@ -49,8 +49,14 @@ def answer(question: str, persona: str, quality: float) -> str:
     """Produce a miner answer. persona is a short style hint."""
     client = _openai()
     if client is None:
-        tag = "high-quality, correct, detailed" if quality >= 0.6 else "vague and likely wrong"
-        return f"[mock {tag} answer to: {question}]"
+        from qa_bank import UNABLE, lookup, vary
+
+        canonical = lookup(question)
+        if canonical is None:
+            return UNABLE  # not in the bank: honest agents admit they can't answer
+        if quality < 0.6:
+            return UNABLE  # low-quality (cabal) agents fail even on known questions
+        return vary(canonical)  # honest agent: correct, non-deterministic phrasing
     try:
         sys = (
             f"You are an AI miner. Persona: {persona}. "
@@ -75,6 +81,9 @@ def judge(question: str, ans: str, hidden_quality: float) -> float:
     if client is None:
         import random
 
+        # an "unable to answer" response scores near zero regardless of who sent it
+        if "unable to answer" in ans.lower():
+            return random.uniform(0.0, 0.08)
         return max(0.0, min(1.0, hidden_quality + random.uniform(-0.05, 0.05)))
     try:
         rubric = _load_judge_rubric()

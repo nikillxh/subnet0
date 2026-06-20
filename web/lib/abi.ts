@@ -155,6 +155,19 @@ export const SUBNET0_ABI = [
   },
   {
     "type": "function",
+    "name": "feePool",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getAnswers",
     "inputs": [
       {
@@ -361,6 +374,25 @@ export const SUBNET0_ABI = [
   },
   {
     "type": "function",
+    "name": "nativePending",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "owner",
     "inputs": [],
     "outputs": [
@@ -440,7 +472,7 @@ export const SUBNET0_ABI = [
         "internalType": "uint256"
       }
     ],
-    "stateMutability": "nonpayable"
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -501,6 +533,19 @@ export const SUBNET0_ABI = [
       },
       {
         "name": "_emission",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setTaskFee",
+    "inputs": [
+      {
+        "name": "fee",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -614,6 +659,19 @@ export const SUBNET0_ABI = [
   {
     "type": "function",
     "name": "taskCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "taskFee",
     "inputs": [],
     "outputs": [
       {

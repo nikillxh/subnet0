@@ -17,10 +17,24 @@ echo ">> deploying to Monad testnet (chain 10143)"
 python run_demo.py deploy
 ADDR="$(python -c 'import json,common; print(json.load(open(common.DEPLOY_PATH))["address"])')"
 
-cat > "$ROOT/web/.env.local" <<EOF
+echo ">> funding the other 7 agents from account 0"
+python disperse.py "${FUND_PER_AGENT:-0.1}"
+
+echo ">> sync ABI + questions to frontend"
+"$ROOT/scripts/sync-abi.sh"
+"$ROOT/scripts/sync-qa.sh"
+
+# .env.local for local `next dev`; .env.production (committed, public values)
+# so Vercel's `next build` picks up the testnet config automatically.
+for f in "$ROOT/web/.env.local" "$ROOT/web/.env.production"; do
+cat > "$f" <<EOF
 NEXT_PUBLIC_RPC_URL=$RPC
 NEXT_PUBLIC_SUBNET0_ADDRESS=$ADDR
+NEXT_PUBLIC_CHAIN_ID=10143
 EOF
-echo ">> deployed at $ADDR (dashboard wired)"
+done
+echo ">> deployed at $ADDR (dashboard wired, all agents funded)"
+echo ">> wrote web/.env.production for Vercel"
 echo ">> explorer: https://testnet.monadscan.com/address/$ADDR"
-echo ">> next: scripts/testnet-run.sh"
+echo ">> next: scripts/testnet-run.sh   (register + seed + run epochs)"
+echo ">>   or: scripts/serve.sh         (answer live Market requests)"

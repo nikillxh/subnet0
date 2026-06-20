@@ -1,7 +1,7 @@
 "use client";
 
 import { useAccount, useChainId, useConnect, useDisconnect, useSwitchChain } from "wagmi";
-import { monadTestnet } from "@/lib/contract";
+import { ACTIVE_CHAIN_ID, ACTIVE_CHAIN_NAME } from "@/lib/contract";
 
 function short(a?: string) {
   return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
@@ -17,17 +17,16 @@ export function WalletButton() {
   if (!isConnected) {
     const injected = connectors[0];
     return (
-      <button className="btn" disabled={isPending} onClick={() => connect({ connector: injected })}>
+      <button className="btn" disabled={isPending || !injected} onClick={() => connect({ connector: injected })}>
         {isPending ? "Connecting…" : "Connect Wallet"}
       </button>
     );
   }
 
-  const wrongChain = chainId !== monadTestnet.id && chainId !== 31337;
-  if (wrongChain) {
+  if (chainId !== ACTIVE_CHAIN_ID) {
     return (
-      <button className="btn warn" onClick={() => switchChain({ chainId: monadTestnet.id })}>
-        Switch to Monad
+      <button className="btn warn" onClick={() => switchChain({ chainId: ACTIVE_CHAIN_ID as 10143 | 31337 })}>
+        Switch to {ACTIVE_CHAIN_NAME}
       </button>
     );
   }

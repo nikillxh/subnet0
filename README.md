@@ -21,8 +21,10 @@ minority provably decays to irrelevance.
   answer on-chain; validators score answers; the highest-consensus answer wins.
 - **Collusion resistant** - a self-dealing cabal below 50% stake stays under the
   consensus threshold and loses share every epoch (whitepaper Section 10).
-- **Wallet-native frontend** - request compute, register, and claim from the
-  browser on Monad testnet.
+- **Pay-per-compute** - consumers pay a small native-MON fee per request; fees
+  are distributed each epoch to agents by their consensus-weighted contribution.
+- **Wallet-native frontend** - request compute and claim earnings from the
+  browser; agents onboard via a copyable prompt (no manual register button).
 - **Runs with zero credentials** - a deterministic mock LLM lets the whole system
   run locally without an API key.
 
@@ -39,9 +41,9 @@ flowchart LR
     vals["Validators score answers"]
     owner["Owner runs epochs"]
   end
-  user -->|"requestTask / register / claim"| SN
-  miners -->|submitAnswer| SN
-  vals -->|setWeights| SN
+  user -->|"requestTask (pay fee)"| SN
+  miners -->|"register / submitAnswer / claim"| SN
+  vals -->|"register / setWeights"| SN
   owner -->|runEpoch| SN
   SN -->|events + snapshot| web[Frontend]
   web --> user
@@ -101,7 +103,8 @@ model instead of the mock; one key serves all agents.
 
 ```
 scripts/setup.sh            one-time install (forge + venv + npm)
-scripts/local.sh [epochs]   anvil + deploy + sync ABI + scripted decay demo
+scripts/local.sh [epochs]   anvil + deploy + sync ABI/QA + scripted decay demo
+scripts/demo-long.sh [N]    long, smooth decay curve (open dashboard first)
 scripts/serve.sh            event-driven fleet (answers on-chain tasks)
 scripts/dashboard.sh        start the frontend
 scripts/e2e.sh              full end-to-end test (contracts -> web)
@@ -118,16 +121,25 @@ Network: chain id `10143`, RPC `https://testnet-rpc.monad.xyz`, faucet
 `https://faucet.monad.xyz`, explorer `https://testnet.monadscan.com`.
 
 ```bash
-scripts/testnet-keys.sh     # generates 8 keys, prints addresses to fund
-# fund all 8 addresses at the faucet (account [0] is deployer/owner - fund first)
-scripts/testnet-deploy.sh   # deploys + wires the frontend + syncs ABI
-RPC_URL=https://testnet-rpc.monad.xyz scripts/serve.sh
+scripts/testnet-keys.sh     # prints ONE address to fund (account 0)
+# fund that single address at the faucet
+scripts/testnet-deploy.sh   # funds the other 7 agents from it, deploys,
+                            # wires the frontend, syncs ABI + questions
+scripts/testnet-run.sh      # register + seed + run epochs (the decay graph)
+#   or: scripts/serve.sh    # answer live Market requests
 ```
 
-Then in the browser: add Monad testnet to your wallet, connect, open **Market**,
+You only fund **one** address — `testnet-deploy.sh` disperses gas to the rest.
+Then in the browser: connect, approve the network switch (MON), open **Market**,
 submit a prompt, watch agents answer and get scored, and **Claim** on
-**Participate**. All 8 agent accounts send transactions, so fund all 8; account
-[0] does the most (deploy, seeding, and every `runEpoch`).
+**Participate**.
+
+### Deploy the frontend (Vercel)
+
+```bash
+vercel login                # one-time
+scripts/deploy-vercel.sh    # builds web/ with the committed testnet config
+```
 
 ## Demo walkthrough
 
@@ -137,8 +149,9 @@ submit a prompt, watch agents answer and get scored, and **Claim** on
    the highest-consensus answer is highlighted.
 4. **Dashboard**: stake and consensus update live; the chart shows the cabal's
    stake share decaying (collusion resistance).
-5. **Participate**: register and claim rewards.
-6. **Docs**: the mechanism, roles, and how to participate.
+5. **Participate**: copy the agent onboarding prompt to spin up agents; connect
+   an agent wallet to track stake and claim MON earnings.
+6. **Docs**: the mechanism, roles, pricing, and how to participate.
 
 ## Tech
 

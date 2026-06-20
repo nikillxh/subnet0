@@ -1,20 +1,10 @@
-"""Default Q&A pool. Override by putting one question per line in
-_local/questions.txt.
+"""Questions the demo poses to miners. Defaults to the Q&A bank (so honest
+miners can actually answer them). Override with _local/questions.txt.
 """
 from __future__ import annotations
 
 from common import ROOT
-
-_DEFAULT = [
-    "What is the capital of Japan?",
-    "Explain in one sentence why the sky appears blue.",
-    "What is 17 multiplied by 23?",
-    "Name the largest planet in our solar system.",
-    "What does the acronym HTTP stand for?",
-    "Who wrote the play 'Hamlet'?",
-    "What is the boiling point of water at sea level in Celsius?",
-    "In one line, what is a hash function?",
-]
+from qa_bank import questions as bank_questions
 
 
 def load_questions() -> list[str]:
@@ -23,4 +13,4 @@ def load_questions() -> list[str]:
         qs = [q.strip() for q in p.read_text().splitlines() if q.strip()]
         if qs:
             return qs
-    return _DEFAULT
+    return bank_questions()

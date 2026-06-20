@@ -72,16 +72,19 @@ contract Subnet0Test is Test {
 
     function test_ClaimDrainsPending() public {
         sn.runEpoch();
-        vm.prank(A_MIN2);
-        uint256 amt = sn.claim();
-        assertGt(amt, 0, "honest miner earned emissions");
         (, , , , , , , uint256[16] memory pend) = sn.snapshot();
-        assertEq(pend[2], 0, "pending cleared after claim");
+        assertGt(pend[2], 0, "honest miner earned emissions");
+        vm.prank(A_MIN2);
+        sn.claim();
+        (, , , , , , , uint256[16] memory pend2) = sn.snapshot();
+        assertEq(pend2[2], 0, "pending cleared after claim");
     }
 
     function test_TaskFlow() public {
+        uint256 fee = sn.taskFee();
+        vm.deal(A_MIN2, 1 ether);
         vm.prank(A_MIN2);
-        uint256 id = sn.requestTask("What is 2+2?");
+        uint256 id = sn.requestTask{value: fee}("What is 2+2?");
         assertEq(id, 0);
 
         vm.prank(A_MIN2);
@@ -101,16 +104,20 @@ contract Subnet0Test is Test {
     }
 
     function test_SubmitAnswerRevertsUnregistered() public {
+        uint256 fee = sn.taskFee();
+        vm.deal(A_MIN2, 1 ether);
         vm.prank(A_MIN2);
-        uint256 id = sn.requestTask("q");
+        uint256 id = sn.requestTask{value: fee}("q");
         vm.prank(address(0xdead));
         vm.expectRevert(Subnet0.NotRegistered.selector);
         sn.submitAnswer(id, "x");
     }
 
     function test_SubmitAnswerRevertsDuplicate() public {
+        uint256 fee = sn.taskFee();
+        vm.deal(A_MIN2, 1 ether);
         vm.prank(A_MIN2);
-        uint256 id = sn.requestTask("q");
+        uint256 id = sn.requestTask{value: fee}("q");
         vm.prank(A_MIN2);
         sn.submitAnswer(id, "a");
         vm.prank(A_MIN2);
@@ -119,9 +126,38 @@ contract Subnet0Test is Test {
     }
 
     function test_RequestRevertsEmptyPrompt() public {
+        uint256 fee = sn.taskFee();
+        vm.deal(A_MIN2, 1 ether);
         vm.prank(A_MIN2);
         vm.expectRevert(Subnet0.BadInput.selector);
-        sn.requestTask("");
+        sn.requestTask{value: fee}("");
+    }
+
+    function test_RequestRevertsUnderpaid() public {
+        vm.deal(A_MIN2, 1 ether);
+        vm.prank(A_MIN2);
+        vm.expectRevert(Subnet0.BadInput.selector);
+        sn.requestTask{value: 0}("q");
+    }
+
+    function test_FeePoolPaysAgentsAndClaim() public {
+        uint256 fee = sn.taskFee();
+        vm.deal(A_MIN2, 1 ether);
+        vm.prank(A_MIN2);
+        sn.requestTask{value: fee}("paid task");
+
+        // honest validators score honest miners already in setUp
+        sn.runEpoch();
+
+        // a top honest miner should have native pending and be able to claim it
+        uint256 owed = sn.nativePending(2);
+        assertGt(owed, 0, "miner earned native fee");
+        uint256 before = A_MIN2.balance;
+        vm.prank(A_MIN2);
+        uint256 got = sn.claim();
+        assertEq(got, owed);
+        assertEq(A_MIN2.balance, before + owed);
+        assertEq(sn.nativePending(2), 0);
     }
 
     // --- helpers ---

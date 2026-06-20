@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -39,6 +39,8 @@ type Row = {
 
 const f = (x: bigint) => Number(x) / WAD;
 
+const CABAL_UIDS = [5, 6, 7];
+
 export default function Page() {
   const [rows, setRows] = useState<Row[]>([]);
   const [epoch, setEpoch] = useState(0);
@@ -46,8 +48,8 @@ export default function Page() {
   const [series, setSeries] = useState<{ epoch: number; cabalShare: number }[]>(
     []
   );
-  const lastEpoch = useRef(-1);
 
+  // table + current epoch from the live snapshot
   useEffect(() => {
     let alive = true;
     const poll = async () => {
@@ -84,29 +86,56 @@ export default function Page() {
           });
         }
         setRows(next);
-        const epNum = Number(ep);
-        setEpoch(epNum);
+        setEpoch(Number(ep));
         setConnected(true);
-
-        const total = next.reduce((a, x) => a + x.stake, 0);
-        const cabal = next
-          .filter((x) => x.kind === "cabal")
-          .reduce((a, x) => a + x.stake, 0);
-        const share = total > 0 ? cabal / total : 0;
-        if (epNum !== lastEpoch.current) {
-          lastEpoch.current = epNum;
-          setSeries((prev) =>
-            [...prev, { epoch: epNum, cabalShare: Number(share.toFixed(4)) }].slice(
-              -60
-            )
-          );
-        }
       } catch {
         if (alive) setConnected(false);
       }
     };
     poll();
     const t = setInterval(poll, 2000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
+
+  // full decay curve, rebuilt from EpochSettled events (every epoch ever run)
+  useEffect(() => {
+    let alive = true;
+    const loadSeries = async () => {
+      try {
+        const logs = await publicClient.getContractEvents({
+          address: SUBNET0_ADDRESS,
+          abi: SUBNET0_ABI,
+          eventName: "EpochSettled",
+          fromBlock: 0n,
+        });
+        if (!alive) return;
+        const byEpoch = new Map<number, number>();
+        for (const log of logs) {
+          const a = log.args as { epoch?: bigint; m?: number; stake?: readonly bigint[] };
+          if (a.epoch === undefined || !a.stake) continue;
+          const m = Number(a.m ?? a.stake.length);
+          let total = 0;
+          let cabal = 0;
+          for (let i = 0; i < m; i++) {
+            const v = Number(a.stake[i]) / WAD;
+            total += v;
+            if (CABAL_UIDS.includes(i)) cabal += v;
+          }
+          byEpoch.set(Number(a.epoch), total > 0 ? Number((cabal / total).toFixed(4)) : 0);
+        }
+        const next = [...byEpoch.entries()]
+          .sort((x, y) => x[0] - y[0])
+          .map(([ep, cabalShare]) => ({ epoch: ep, cabalShare }));
+        setSeries(next);
+      } catch {
+        /* ignore; snapshot poll handles connection state */
+      }
+    };
+    loadSeries();
+    const t = setInterval(loadSeries, 2500);
     return () => {
       alive = false;
       clearInterval(t);
@@ -186,7 +215,7 @@ export default function Page() {
         </div>
 
         <div className="panel">
-          <h2>Cabal stake share over epochs (Section 10)</h2>
+          <h2>Collusion resistance — colluding group&apos;s stake share per epoch</h2>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={series}>
               <CartesianGrid stroke="#2c2212" strokeDasharray="3 3" />

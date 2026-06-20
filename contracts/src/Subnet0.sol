@@ -21,6 +21,11 @@ contract Subnet0 {
     uint256 public emission;   // stake minted per epoch (WAD)
     uint256 public initStake;  // stake granted at registration (WAD)
 
+    // --- economics (native MON) ---
+    uint256 public taskFee;    // wei a consumer pays per requestTask
+    uint256 public feePool;    // wei collected, distributed to agents each epoch
+    mapping(uint8 => uint256) public nativePending; // uid -> claimable wei
+
     // --- registry ---
     uint8 public n;
     mapping(uint8 => address) public agentOf;     // uid -> address
@@ -83,6 +88,7 @@ contract Subnet0 {
         alpha = WAD / 2;          // 0.5 bond EMA
         emission = WAD;           // 1 unit minted per epoch
         initStake = WAD;          // 1 unit at registration
+        taskFee = 1e14;           // 0.0001 MON per request (tiny on purpose)
     }
 
     function uidOf(address a) public view returns (uint8) {
@@ -219,17 +225,23 @@ contract Subnet0 {
             }
         }
 
-        // 6) emission dS[k] = 0.5 D[k] + 0.5 I[k]; mint -> stake + claimable
+        // 6) emission dS[k] = 0.5 D[k] + 0.5 I[k]; mint -> stake + claimable.
+        //    Consumer fees (feePool) are paid out by the same share (native MON).
+        uint256 pool = feePool;
         for (uint8 k = 0; k < m; k++) {
             uint256 share = (D[k] + I[k]) / 2; // sums to ~WAD across agents
             uint256 minted = (emission * share) / WAD;
             stake[k] += minted;
             pending[k] += minted;
+            if (pool > 0) {
+                nativePending[k] += (pool * share) / WAD;
+            }
             rank[k] = R[k];
             consensus[k] = C[k];
             incentive[k] = I[k];
             dividend[k] = D[k];
         }
+        feePool = 0;
 
         epoch += 1;
         emit EpochSettled(epoch, m, stake, consensus, incentive, dividend);
@@ -251,20 +263,34 @@ contract Subnet0 {
         stake[uid] = amount;
     }
 
-    /// @notice Withdraw accrued rewards ledger (symbolic in this demo build).
+    /// @notice Owner sets the per-request fee (wei).
+    function setTaskFee(uint256 fee) external {
+        if (msg.sender != owner) revert BadInput();
+        taskFee = fee;
+    }
+
+    /// @notice Withdraw earned fees (native MON). Clears the symbolic ledger too.
     function claim() external returns (uint256 amount) {
         uint8 uid = uidOf(msg.sender);
-        amount = pending[uid];
         pending[uid] = 0;
+        amount = nativePending[uid];
+        nativePending[uid] = 0;
+        if (amount > 0) {
+            (bool ok, ) = payable(msg.sender).call{value: amount}("");
+            if (!ok) revert BadInput();
+        }
         emit Claimed(uid, msg.sender, amount);
     }
 
     // --- task board ---
 
     /// @notice Anyone can request a computation (a prompt for miners to answer).
-    function requestTask(string calldata prompt) external returns (uint256 id) {
+    /// @dev Consumer pays >= taskFee in native MON; fees fund agent payouts.
+    function requestTask(string calldata prompt) external payable returns (uint256 id) {
         uint256 len = bytes(prompt).length;
         if (len == 0 || len > MAX_PROMPT_LEN) revert BadInput();
+        if (msg.value < taskFee) revert BadInput();
+        feePool += msg.value;
         id = tasks.length;
         tasks.push(Task({requester: msg.sender, prompt: prompt, epochAtRequest: epoch, answerCount: 0}));
         emit TaskRequested(id, msg.sender, prompt);

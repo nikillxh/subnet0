@@ -16,7 +16,7 @@ With no env, defaults to local Anvil (http://127.0.0.1:8545) + dev keys + mock L
 from __future__ import annotations
 
 import argparse
-import json
+import time
 
 from common import (
     Account,
@@ -57,7 +57,7 @@ def _fmt_row(label, s, c, inc, div):
     return f"  {label:<14} stake={from_wad(s):8.3f}  C={from_wad(c):5.3f}  I={from_wad(inc):5.3f}  D={from_wad(div):5.3f}"
 
 
-def cmd_run(epochs: int):
+def cmd_run(epochs: int, delay: float = 0.0, emission: float = 8.0):
     w3 = get_w3()
     keys = agent_keys()
     if len(keys) < 8:
@@ -91,8 +91,9 @@ def cmd_run(epochs: int):
     seeds = {0: 25, 1: 25, 2: 1, 3: 1, 4: 1, 5: 18, 6: 18, 7: 1}
     for uid, amt in seeds.items():
         owner.send(owner.contract.functions.seedStake(uid, to_wad(amt)))
-    # crank emission so the cabal-decay curve is visible within ~15 epochs
-    owner.send(owner.contract.functions.setParams(10, to_wad(0.5), to_wad(0.5), to_wad(8)))
+    # emission controls how fast the cabal-decay curve drops. Lower it for a
+    # longer, smoother curve over more epochs.
+    owner.send(owner.contract.functions.setParams(10, to_wad(0.5), to_wad(0.5), to_wad(emission)))
 
     questions = load_questions()
     contract = owner.contract
@@ -116,6 +117,8 @@ def cmd_run(epochs: int):
         cabal = sum(s[i] for i in (5, 6, 7))
         total = honest + cabal
         print(f"  -> cabal stake share: {cabal / total:.4f}")
+        if delay > 0:
+            time.sleep(delay)  # let a live dashboard capture each epoch
 
 
 def main():
@@ -124,11 +127,13 @@ def main():
     sub.add_parser("deploy")
     runp = sub.add_parser("run")
     runp.add_argument("--epochs", type=int, default=15)
+    runp.add_argument("--delay", type=float, default=0.0, help="seconds between epochs")
+    runp.add_argument("--emission", type=float, default=8.0, help="stake minted/epoch")
     args = ap.parse_args()
     if args.cmd == "deploy":
         cmd_deploy()
     else:
-        cmd_run(args.epochs)
+        cmd_run(args.epochs, args.delay, args.emission)
 
 
 if __name__ == "__main__":

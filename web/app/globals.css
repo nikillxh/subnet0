@@ -436,3 +436,98 @@ input.text:focus {
   font-size: 13px;
   margin: 14px 0;
 }
+
+/* sample-question picker */
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.chip {
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.chip:hover {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* product doc cards + steps */
+.cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin: 4px 0 8px;
+}
+@media (min-width: 760px) {
+  .cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 18px;
+}
+.card .step-no {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.card h3 {
+  margin: 8px 0 6px;
+  font-size: 15px;
+  color: var(--text);
+}
+.card p {
+  margin: 0;
+  font-size: 13px;
+  color: #cdbfa8;
+  line-height: 1.6;
+}
+.doc h3 {
+  color: var(--text);
+  font-size: 14px;
+  margin: 18px 0 6px;
+}
+.faq {
+  border-top: 1px solid var(--border);
+  padding: 14px 0;
+}
+.faq:last-child {
+  border-bottom: 1px solid var(--border);
+}
+.faq .q {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+/* copyable code block */
+.copybox {
+  position: relative;
+}
+.copybox pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.copybox .copy {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}

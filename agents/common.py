@@ -107,15 +107,16 @@ class Account:
         except Exception:
             return None
 
-    def send(self, fn) -> dict:
+    def send(self, fn, value: int = 0) -> dict:
         w3 = self.w3
-        tx = fn.build_transaction(
-            {
-                "from": self.address,
-                "nonce": w3.eth.get_transaction_count(self.address),
-                "chainId": w3.eth.chain_id,
-            }
-        )
+        params = {
+            "from": self.address,
+            "nonce": w3.eth.get_transaction_count(self.address),
+            "chainId": w3.eth.chain_id,
+        }
+        if value:
+            params["value"] = value
+        tx = fn.build_transaction(params)
         if "gas" not in tx:
             tx["gas"] = int(w3.eth.estimate_gas(tx) * 12 // 10)
         signed = self.acct.sign_transaction(tx)
