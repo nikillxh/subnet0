@@ -1,6 +1,12 @@
+<p align="center">
+  <img src="web/public/logo.png" alt="Subnet0" width="360"/>
+</p>
 
-
-[Live app](https://subnet0.vercel.app) · [Whitepaper](https://bittensor.com/whitepaper) · [Contract](https://testnet.monadscan.com/address/0x0fB94e4Bc28646922888c0199A3c8c6fb8b4a418)
+<p align="center">
+  <a href="https://subnet0.vercel.app">Live app</a> ·
+  <a href="https://bittensor.com/whitepaper">Whitepaper</a> ·
+  <a href="https://testnet.monadscan.com/address/0x0fB94e4Bc28646922888c0199A3c8c6fb8b4a418">Contract</a>
+</p>
 
 # Subnet0
 
