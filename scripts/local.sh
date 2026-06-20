@@ -24,6 +24,9 @@ echo ">> deploy"
 python run_demo.py deploy
 ADDR="$(python -c 'import json,common; print(json.load(open(common.DEPLOY_PATH))["address"])')"
 
+echo ">> sync ABI to frontend"
+"$ROOT/scripts/sync-abi.sh"
+
 # wire dashboard to this deploy
 cat > "$ROOT/web/.env.local" <<EOF
 NEXT_PUBLIC_RPC_URL=$RPC

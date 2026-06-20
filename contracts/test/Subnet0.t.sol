@@ -79,6 +79,51 @@ contract Subnet0Test is Test {
         assertEq(pend[2], 0, "pending cleared after claim");
     }
 
+    function test_TaskFlow() public {
+        vm.prank(A_MIN2);
+        uint256 id = sn.requestTask("What is 2+2?");
+        assertEq(id, 0);
+
+        vm.prank(A_MIN2);
+        sn.submitAnswer(id, "4");
+        vm.prank(A_MIN3);
+        sn.submitAnswer(id, "four");
+
+        (address requester, string memory prompt, , uint8 answerCount) = sn.getTask(id);
+        assertEq(requester, A_MIN2);
+        assertEq(prompt, "What is 2+2?");
+        assertEq(answerCount, 2);
+
+        (uint8[] memory uids, string[] memory texts) = sn.getAnswers(id);
+        assertEq(uids.length, 2);
+        assertEq(texts[0], "4");
+        assertEq(uids[0], 2);
+    }
+
+    function test_SubmitAnswerRevertsUnregistered() public {
+        vm.prank(A_MIN2);
+        uint256 id = sn.requestTask("q");
+        vm.prank(address(0xdead));
+        vm.expectRevert(Subnet0.NotRegistered.selector);
+        sn.submitAnswer(id, "x");
+    }
+
+    function test_SubmitAnswerRevertsDuplicate() public {
+        vm.prank(A_MIN2);
+        uint256 id = sn.requestTask("q");
+        vm.prank(A_MIN2);
+        sn.submitAnswer(id, "a");
+        vm.prank(A_MIN2);
+        vm.expectRevert(Subnet0.BadInput.selector);
+        sn.submitAnswer(id, "a2");
+    }
+
+    function test_RequestRevertsEmptyPrompt() public {
+        vm.prank(A_MIN2);
+        vm.expectRevert(Subnet0.BadInput.selector);
+        sn.requestTask("");
+    }
+
     // --- helpers ---
     function _cabalShare() internal view returns (uint256) {
         uint256[16] memory s = sn.getStake();

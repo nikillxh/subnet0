@@ -41,6 +41,22 @@ contract Subnet0 {
     uint256 public epoch;
     address public owner;
 
+    // --- task board (consumer compute requests) ---
+    struct Task {
+        address requester;
+        string prompt;
+        uint256 epochAtRequest;
+        uint8 answerCount;
+    }
+
+    Task[] public tasks;
+    mapping(uint256 => mapping(uint8 => string)) internal answerOf;   // taskId -> uid -> answer
+    mapping(uint256 => mapping(uint8 => bool)) internal hasAnswered;  // taskId -> uid -> bool
+    mapping(uint256 => uint8[]) internal answerers;                   // taskId -> uids that answered
+
+    uint256 public constant MAX_PROMPT_LEN = 500;
+    uint256 public constant MAX_ANSWER_LEN = 1000;
+
     event Registered(uint8 indexed uid, address indexed agent);
     event WeightsSet(uint8 indexed uid, uint8[] dests, uint256[] weights);
     event EpochSettled(
@@ -52,6 +68,8 @@ contract Subnet0 {
         uint256[MAX_AGENTS] dividend
     );
     event Claimed(uint8 indexed uid, address indexed agent, uint256 amount);
+    event TaskRequested(uint256 indexed id, address indexed requester, string prompt);
+    event AnswerSubmitted(uint256 indexed id, uint8 indexed uid, string text);
 
     error NotRegistered();
     error AlreadyRegistered();
@@ -239,6 +257,58 @@ contract Subnet0 {
         amount = pending[uid];
         pending[uid] = 0;
         emit Claimed(uid, msg.sender, amount);
+    }
+
+    // --- task board ---
+
+    /// @notice Anyone can request a computation (a prompt for miners to answer).
+    function requestTask(string calldata prompt) external returns (uint256 id) {
+        uint256 len = bytes(prompt).length;
+        if (len == 0 || len > MAX_PROMPT_LEN) revert BadInput();
+        id = tasks.length;
+        tasks.push(Task({requester: msg.sender, prompt: prompt, epochAtRequest: epoch, answerCount: 0}));
+        emit TaskRequested(id, msg.sender, prompt);
+    }
+
+    /// @notice Registered miner submits one answer to a task.
+    function submitAnswer(uint256 id, string calldata text) external {
+        uint8 uid = uidOf(msg.sender);
+        if (id >= tasks.length) revert BadInput();
+        uint256 len = bytes(text).length;
+        if (len == 0 || len > MAX_ANSWER_LEN) revert BadInput();
+        if (hasAnswered[id][uid]) revert BadInput();
+        hasAnswered[id][uid] = true;
+        answerOf[id][uid] = text;
+        answerers[id].push(uid);
+        tasks[id].answerCount += 1;
+        emit AnswerSubmitted(id, uid, text);
+    }
+
+    function taskCount() external view returns (uint256) {
+        return tasks.length;
+    }
+
+    function getTask(uint256 id)
+        external
+        view
+        returns (address requester, string memory prompt, uint256 epochAtRequest, uint8 answerCount)
+    {
+        Task storage t = tasks[id];
+        return (t.requester, t.prompt, t.epochAtRequest, t.answerCount);
+    }
+
+    function getAnswers(uint256 id)
+        external
+        view
+        returns (uint8[] memory uids, string[] memory texts)
+    {
+        uint8[] storage a = answerers[id];
+        uids = new uint8[](a.length);
+        texts = new string[](a.length);
+        for (uint256 i = 0; i < a.length; i++) {
+            uids[i] = a[i];
+            texts[i] = answerOf[id][a[i]];
+        }
     }
 
     // --- views for dashboard / agents ---
